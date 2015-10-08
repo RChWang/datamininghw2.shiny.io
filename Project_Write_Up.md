@@ -1,0 +1,184 @@
+# Data Project Documentation
+
+### Introduction
+The Markdown file documents what was done for the [Data Mining Homework 2 Data Visulization](https://whalejasmine.shinyapps.io/REIBURSEMENThw2). It can be found in the hyperlink above.
+
+
+## Data Source
+based on the first sample of the DE-SynPuf data. A codebook describing these data can be found here
+We will be using the [first sample](https://www.cms.gov/Research-Statistics-Data-and-Systems/Downloadable-Public-Use-Files/SynPUFs/DESample01.html) of the [DE-SynPuf data](https://www.cms.gov/Research-Statistics-Data-and-Systems/Downloadable-Public-Use-Files/SynPUFs/DE_Syn_PUF.html) base from the CMS.gov website. The data can be downloaded [here]("https://www.cms.gov/Research-Statistics-Data-and-Systems/Downloadable-Public-Use-Files/SynPUFs/DESample01.html"). The recode below 
+
+
+```r
+setwd("~/Desktop/datamining/HW1_data_preprocessing/data mining hw1")
+file2008=read.csv("reibur_2008.csv")
+file2009=read.csv("reibur_2008.csv")
+file2010=read.csv("reibur_2008.csv")
+
+## convert state code to state abra
+#'x' is the column of a data.frame that holds 2 digit state codes
+stateFromLower <-function(x) {
+  st.codes<-data.frame(
+    state=c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11",
+            "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22",
+            "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33",
+            "34", "35", "36", "37", "38", "39", "41", "42", "43", "44",
+            "45", "46", "47", "49", "50", "51", "52", "53", "54"),
+    full=as.factor(c('AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'DC', 'FL', 'GA',
+                     'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 
+                     'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 
+                     'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX',
+                     'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY','Others'))
+  )
+  #create an nx1 data.frame of state codes from source column
+  st.x<-data.frame(state=x)
+  #match source codes with codes from 'st.codes' local variable and use to return the full state name
+  refac.x<-st.codes$full[match(st.x$state,st.codes$state)]
+  #return the full state names in the same order in which they appeared in the original source
+  return(refac.x)
+  
+}
+
+file2008$SP_STATE_CODE = stateFromLower(file2008$SP_STATE_CODE)
+file2009$SP_STATE_CODE = stateFromLower(file2009$SP_STATE_CODE)
+file2010$SP_STATE_CODE = stateFromLower(file2010$SP_STATE_CODE)
+
+# create year column
+
+file2008$Year = as.factor('2008')
+file2009$Year = as.factor('2009')
+file2010$Year = as.factor('2010')
+
+#take samples
+s2008 <- file2008[sample(1:nrow(file2008), 1000,replace=FALSE),]
+s2009 <- file2009[sample(1:nrow(file2009), 1000,replace=FALSE),]
+s2010 <- file2010[sample(1:nrow(file2010), 1000,replace=FALSE),]
+
+sample = rbind(s2008,s2009,s2010)
+sumdt = rbind(file2008, file2009, file2010)
+sumdt$X = NULL
+
+# save sum file
+write.csv(sample, "sample.csv")
+
+write.csv(sumdt, "sumDatebase.csv")
+
+sumdf <- read.csv("sample.csv", header = TRUE)
+```
+
+
+# The Code for the App
+
+## Script for ui.R
+
+```r
+# This is for ui.R
+
+sumdf <- read.csv("sample.csv", header = TRUE)
+
+library(shiny)
+shinyUI(fluidPage(
+  
+  titlePanel("Data Mining Homework 2 Data Visulization"),
+  
+  sidebarLayout(
+    
+    sidebarPanel(
+      h2("Analyse Sate Statistics"),
+      selectInput('stateid', "State", as.character(unique(sumdf$State.Name))),
+      h6("This changes the Summary Statistics for 2008-2010 & Comparison with Overall Average tabs"),
+      selectInput('stat1', "Choose a Statistic", names(sumdf[,3:30])),
+      
+      h6("Select to compare with the overall average in the Comparison with Overall Average tab"),
+      
+      h2("Exploration Analysis"),
+      selectInput('yearid', "Year", as.character(unique(sumdf$Year))),
+      
+      h6("Select Bins of histogram"),
+      sliderInput("bins", "select the nuber of BINs for histogram", min = 3, max=20, value = 3),
+      
+      h6("Chronic diseases"),
+      radioButtons("disease", "Select Chroic diseases of histogram", choices = c(names(sumdf[,14:24]))),
+      width=3
+    ),
+    
+    
+    mainPanel(
+      
+      tabsetPanel(
+        position = "above",
+        
+        tabPanel("Summary Statistics for 2008-2010", 
+                 verbatimTextOutput("selectedstate"), 
+                 h3("Summary Statistics"),
+                 tableOutput("summarytable")), 
+        
+        tabPanel("Motion Plot", 
+                 h2("Motion Plot"),
+                 h3("Please select the required data in the fields provided"),
+                 h4("(Note: Graphics may take a while to load)"),
+                 htmlOutput("plot1")),
+        
+        tabPanel("Exploratory data Analysis ",
+                 h2("Selected Year & Chronic Diseases"),
+                 h4("Distribution of Reimbursement for Various Chronic Diseases"),
+                 plotOutput("plot3")),   
+ 
+        tabPanel("Documentation Guide",
+                 h6("Summary statistics for 2008 to 2010 - Select a Country and it shows summary data for the state selected"),
+                 h6("Comparison with Reibursements - Select a State and Statistics and it plots the selected state and the selected statistics compared to the overall"),
+                 h6("Motion and Comparison Plots - Select the statistics, state that you are interested in to observe how they change over time.")
+        )
+        
+        )
+      )
+  )
+)
+)
+```
+
+## Script for server.R
+
+```r
+library(shiny)
+library(googleVis)
+require(devtools)
+library(psych)
+library(ggplot2)
+library(dplyr)
+library(rCharts)
+library(MASS)
+# Load data
+sumdf <- read.csv("sample.csv", header = TRUE)
+
+shinyServer(
+  
+  function(input, output) {
+
+    # Summary Tables   
+    output$selectedstate <- renderText({paste("Selected State:", input$stateid, sep=" ")})
+    output$summarytable <- renderTable({
+      describe(sumdf[sumdf$State.Name==paste(input$stateid,sep=""),])[c(-1,-2,-4),c(3:5,8:10)]
+    })
+    
+    
+    # Plot motion chart
+    output$plot1 <- renderGvis({
+      gvisMotionChart(sumdf[!duplicated(sumdf[,c("State.Name","Year")]),], idvar = "State.Name", timevar = "Year", xvar = "Age", yvar = "ReiburSum",
+                      options= list(width=1000, height=500))})
+
+    
+    output$plot3 <- renderPlot({
+      colm =as.numeric(input$yearid)
+      dis =input$disease
+     # nPlot(Age ~ ReiburSum, group = 'Year', type = 'multiBarChart', data = sumdf[which(sumdf$dis == 1),])
+      newdata = sumdf[which(sumdf$Year ==2008 & sumdf$SP_ALZHDMTA == 1) ,]
+      hist(newdata$ReiburSum, breaks = seq(0, max(newdata$ReiburSum, l = input$bins+1)))})
+    
+    
+    
+  }
+  )                            
+```
+
+

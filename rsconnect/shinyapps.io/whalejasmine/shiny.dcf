@@ -1,0 +1,9 @@
+name: shiny
+account: whalejasmine
+server: shinyapps.io
+appId: 63485
+bundleId: 282822
+url: https://whalejasmine.shinyapps.io/shiny
+when: 1444233882.67596
+asMultiple: FALSE
+asStatic: FALSE
